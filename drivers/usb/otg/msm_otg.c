@@ -51,6 +51,11 @@
 #include <mach/msm_bus.h>
 #include <mach/rpm-regulator.h>
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#define USB_FASTCHG_LOAD 1000 /* uA */
+#endif
+
 #define MSM_USB_BASE	(motg->regs)
 #define DRIVER_NAME	"msm_otg"
 
@@ -1133,7 +1138,8 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 	if (g && g->is_a_peripheral)
 		return;
 
-	if ((motg->chg_type == USB_ACA_DOCK_CHARGER ||
+	// charge limit should not be imposed for dock charger -ziddey
+	if ((//motg->chg_type == USB_ACA_DOCK_CHARGER ||
 		motg->chg_type == USB_ACA_A_CHARGER ||
 		motg->chg_type == USB_ACA_B_CHARGER ||
 		motg->chg_type == USB_ACA_C_CHARGER) &&
@@ -1147,7 +1153,14 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 
 	if (motg->cur_power == mA)
 		return;
-
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge == 1) {
+			mA = USB_FASTCHG_LOAD;
+			pr_info("USB fast charging is ON - 1000mA.\n");
+	} else {
+		pr_info("USB fast charging is OFF.\n");
+	}
+#endif
 	dev_info(motg->phy.dev, "Avail curr from USB = %u\n", mA);
 
 	pm8921_charger_vbus_draw(mA);
@@ -1232,9 +1245,12 @@ static int msm_otg_usbdev_notify(struct notifier_block *self,
 	 * ACA dock can supply IDEV_CHG irrespective devices connected
 	 * on the accessory port.
 	 */
-	if (!udev->parent || udev->parent->parent ||
+
+	// do not cause required code to be skipped -ziddey
+	// will not switch to a_host / charge otherwise
+	/*if (!udev->parent || udev->parent->parent ||
 			motg->chg_type == USB_ACA_DOCK_CHARGER)
-		goto out;
+		goto out;*/
 
 	switch (action) {
 	case USB_DEVICE_ADD:
@@ -2154,8 +2170,13 @@ static void msm_chg_detect_work(struct work_struct *w)
 				break;
 			}
 
-			if (line_state) /* DP > VLGC or/and DM > VLGC */
-				motg->chg_type = USB_PROPRIETARY_CHARGER;
+			if (line_state) /* DP > VLGC or/and DM > VLGC */ {
+				// simulate ID_A to force host mode with charging -ziddey
+				pr_info("*** FORCING USB HOST MODE WITH CHARGING ***\n");
+				set_bit(ID_A, &motg->inputs);
+				motg->chg_type = USB_ACA_DOCK_CHARGER;
+				//motg->chg_type = USB_PROPRIETARY_CHARGER;
+			}
 			else
 				motg->chg_type = USB_SDP_CHARGER;
 
@@ -3011,11 +3032,13 @@ static void msm_otg_set_vbus_state(int online)
 {
 	static bool init;
 	struct msm_otg *motg = the_msm_otg;
-	struct usb_otg *otg = motg->phy.otg;
+
+	// need BSV interrupt in A Host Mode to detect cable unplug -ziddey
+	//struct usb_otg *otg = motg->phy.otg;
 
 	/* In A Host Mode, ignore received BSV interrupts */
-	if (otg->phy->state >= OTG_STATE_A_IDLE)
-		return;
+	/*if (otg->phy->state >= OTG_STATE_A_IDLE)
+		return;*/
 
 	if (online) {
 		pr_debug("PMIC: BSV set\n");
@@ -3023,6 +3046,10 @@ static void msm_otg_set_vbus_state(int online)
 	} else {
 		pr_debug("PMIC: BSV clear\n");
 		clear_bit(B_SESS_VLD, &motg->inputs);
+
+		// disable host mode (if enabled) -ziddey
+		if (test_and_clear_bit(ID_A, &motg->inputs))
+			pr_info("*** UNFORCING USB HOST MODE ***\n");
 	}
 
 	if (!init) {
