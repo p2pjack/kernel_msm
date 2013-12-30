@@ -3590,8 +3590,8 @@ static unsigned long fmax_gfx3d_8064[VDD_DIG_NUM] = {
 	[VDD_DIG_NOMINAL] = 325000000,
 #ifdef CONFIG_GPU_OVERCLOCK
 #ifdef CONFIG_GPU_OVERCLOCK_450
-	[VDD_DIG_HIGH]    = 450000000
-#else
+        [VDD_DIG_HIGH]    = 450000000
+#else 
 	[VDD_DIG_HIGH]    = 487500000
 #endif
 #else
