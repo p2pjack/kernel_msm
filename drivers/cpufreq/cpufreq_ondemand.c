@@ -34,10 +34,11 @@
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
 #define DEF_FREQUENCY_UP_THRESHOLD		(80)
-#define DEF_SAMPLING_DOWN_FACTOR		(1)
+#define DEF_SAMPLING_DOWN_FACTOR		(10)
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL	(3)
 #define MICRO_FREQUENCY_UP_THRESHOLD		(95)
+#define MICRO_FREQUENCY_DEF_SAMPLE_RATE    (15000)
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
@@ -1160,28 +1161,7 @@ static void dbs_input_disconnect(struct input_handle *handle)
 }
 
 static const struct input_device_id dbs_ids[] = {
- /* multi-touch touchscreen */
-   {
-     .flags = INPUT_DEVICE_ID_MATCH_EVBIT |
-       INPUT_DEVICE_ID_MATCH_ABSBIT,
-     .evbit = { BIT_MASK(EV_ABS) },
-     .absbit = { [BIT_WORD(ABS_MT_POSITION_X)] =
-       BIT_MASK(ABS_MT_POSITION_X) |
-       BIT_MASK(ABS_MT_POSITION_Y) },
-   },
-   /* touchpad */
-   {
-     .flags = INPUT_DEVICE_ID_MATCH_KEYBIT |
-       INPUT_DEVICE_ID_MATCH_ABSBIT,
-     .keybit = { [BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH) },
-     .absbit = { [BIT_WORD(ABS_X)] =
-       BIT_MASK(ABS_X) | BIT_MASK(ABS_Y) },
-   },
-   /* Keypad */
-   {
-     .flags = INPUT_DEVICE_ID_MATCH_EVBIT,
-     .evbit = { BIT_MASK(EV_KEY) },
-   },
+	{ .driver_info = 1 },
 	{ },
 };
 
@@ -1243,12 +1223,11 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			latency = policy->cpuinfo.transition_latency / 1000;
 			if (latency == 0)
 				latency = 1;
+            
 			/* Bring kernel and HW constraints together */
-			min_sampling_rate = max(min_sampling_rate,
-					MIN_LATENCY_MULTIPLIER * latency);
-			dbs_tuners_ins.sampling_rate =
-				max(min_sampling_rate,
-				    latency * LATENCY_MULTIPLIER);
+            min_sampling_rate = MICRO_FREQUENCY_MIN_SAMPLE_RATE;
+            dbs_tuners_ins.sampling_rate = MICRO_FREQUENCY_DEF_SAMPLE_RATE;
+            
 			dbs_tuners_ins.io_is_busy = should_io_be_busy();
 
 			if (dbs_tuners_ins.optimal_freq == 0)
