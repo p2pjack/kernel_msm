@@ -3,7 +3,12 @@ obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o
 # CPUfreq stats
 obj-$(CONFIG_CPU_FREQ_STAT)             += cpufreq_stats.o
 
-# CPUfreq governors 
+# CPUfreq governors
+obj-$(CONFIG_CPU_FREQ_GOV_ASSWAX)  += cpufreq_asswax.o
+obj-$(CONFIG_CPU_FREQ_GOV_BADASS)  += cpufreq_badass.o
+obj-$(CONFIG_CPU_FREQ_GOV_DANCEDANCE)  += cpufreq_dancedance.o
+obj-$(CONFIG_CPU_FREQ_GOV_NIGHTMARE)  += cpufreq_nightmare.o
+obj-$(CONFIG_CPU_FREQ_GOV_SMARTASSH3)  += cpufreq_smartassH3.o 
 obj-$(CONFIG_CPU_FREQ_GOV_PERFORMANCE)	+= cpufreq_performance.o
 obj-$(CONFIG_CPU_FREQ_GOV_POWERSAVE)	+= cpufreq_powersave.o
 obj-$(CONFIG_CPU_FREQ_GOV_WHEATLEY)     += cpufreq_wheatley.o
